@@ -1,23 +1,32 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions } from 'electron'
+import path from 'path'
 
 let mainWindow: BrowserWindow | null
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
 
-// const assetsPath =
-//   process.env.NODE_ENV === 'production'
-//     ? process.resourcesPath
-//     : app.getAppPath()
+const assetsPath =
+  process.env.NODE_ENV === 'production'
+    ? process.resourcesPath
+    : app.getAppPath()
 
 function createWindow () {
+
+  if(app.dock) {
+    app.dock.setIcon(path.join(assetsPath, 'assets', 'logo.png'))
+  }
+
   mainWindow = new BrowserWindow({
-    // icon: path.join(assetsPath, 'assets', 'icon.png'),
-    width: 1100,
-    height: 700,
+    icon: path.join(assetsPath, 'assets', 'logo.png'),
+    minWidth: 1000,
+    minHeight: 600,
+    transparent: false,
     backgroundColor: '#191622',
+    frame: true,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
+      enableRemoteModule: true,
       contextIsolation: true,
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY
     }
@@ -28,6 +37,29 @@ function createWindow () {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+}
+
+async function createMenu() {
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: 'Rocketredis',
+      submenu: [
+        {
+          label: 'Load',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('newConnection')
+          }
+        },
+        {
+          type: 'separator'
+        },
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu);
 }
 
 async function registerListeners () {
@@ -51,7 +83,10 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
+  createMenu()
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }
 })
+
+app.allowRendererProcessReuse = true
